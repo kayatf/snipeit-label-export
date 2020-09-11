@@ -22,7 +22,7 @@
  */
 
 const { toBlob } = require('html-to-image');
-const { file, generateAsync } = require('jszip');
+const JSZip = require('jszip');
 
 window.onload = () => {
     if (!document.title.includes('Labels'))
@@ -40,8 +40,8 @@ window.onload = () => {
         }
     }).catch(error => alert(error.message)).then(() => {
         const zip = new JSZip();
-        blobs.forEach((blob, index) => file(`label-${index}.png`, blob));
-        generateAsync({ type: 'blob' }).then(blob => {
+        blobs.forEach((blob, index) => zip.file(`label-${index}.png`, blob));
+        zip.generateAsync({ type: 'blob' }).then(blob => {
             const button = document.createElement('a');
             button.href = URL.createObjectURL(blob);
             button.download = 'labels.zip';
