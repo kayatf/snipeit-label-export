@@ -54,14 +54,14 @@ window.onload = () => {
                 for (let index = 0; index < blobs.length; index++) {
                     zip.file(`label-${index + 1}.png`, blobs[index]);
                     if (labels.length - 1 === index) {
-                        const button = document.createElement('a');
-                        button.href = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }));
-                        button.download = 'labels.zip';
-                        button.style.display = 'none';
-                        document.body.appendChild(button);
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }));
+                        link.download = 'labels.zip';
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
                         downloadButton.innerHTML = 'Downloaded';
-                        button.click();
-                        button.remove();
+                        link.click();
+                        link.remove();
                     };
                 };
             })();
