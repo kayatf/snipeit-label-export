@@ -24,38 +24,10 @@
 const { toBlob } = require('html-to-image');
 const JSZip = require('jszip');
 
-
-
 window.onload = () => {
     if (!document.title.includes('Labels'))
         return;
     window.URL = window.webkitURL || window.URL;
-    const blobs = [];
-    const labels = document.getElementsByClassName('label');
-    const download = () => {
-        new Promise(resolve => {
-            for (let index = 0; index < labels.length; index++)
-                toBlob(labels[index]).then(blob => {
-                    blobs.push(blob);
-                    if (labels.length - 1 === index)
-                        resolve();
-                })
-        }).catch(error => alert(error.message)).then(() => {
-            const zip = new JSZip();
-            blobs.forEach((blob, index) => {
-                zip.file(`label-${index + 1}.png`, blob);
-                if (blobs.length - 1 === index)
-                    zip.generateAsync({ type: 'blob' }).then(blob => {
-                        const button = document.createElement('a');
-                        button.href = URL.createObjectURL(blob);
-                        button.download = 'labels.zip';
-                        button.style.display = 'none';
-                        document.body.appendChild(button);
-                        button.click();
-                    });
-            });
-        });
-    };
 
     const lineBreak = document.createElement('hr');
     const closeButton = document.createElement('button');
@@ -68,12 +40,32 @@ window.onload = () => {
         lineBreak.remove();
     });
 
-    downloadButton.innerHTML = 'Download labels';
+    downloadButton.innerHTML = 'Download';
     downloadButton.addEventListener('click', () => {
         if (!downloadButton.disabled) {
             downloadButton.disabled = true;
-            download();
-        }
+            downloadButton.innerHTML = 'Downloading...';
+            (async () => {
+                const blobs = [];
+                const labels = document.getElementsByClassName('label');
+                for (let index = 0; index < labels.length; index++)
+                    blobs.push(await toBlob(labels[index]));
+                const zip = new JSZip();
+                for (let index = 0; index < blobs.length; index++) {
+                    zip.file(`label-${index + 1}.png`, blobs[index]);
+                    if (labels.length - 1 === index) {
+                        const button = document.createElement('a');
+                        button.href = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }));
+                        button.download = 'labels.zip';
+                        button.style.display = 'none';
+                        document.body.appendChild(button);
+                        downloadButton.innerHTML = 'Downloaded';
+                        button.click();
+                        button.remove();
+                    };
+                };
+            })();
+        };
     });
 
     document.body.prepend(lineBreak);
