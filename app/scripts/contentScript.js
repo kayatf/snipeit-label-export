@@ -22,12 +22,18 @@
  */
 
 const { toBlob } = require('html-to-image');
+const superagent = require('superagent');
+const tough = require('tough-cookie');
+const build = require('build-url');
 const JSZip = require('jszip');
 
 window.onload = () => {
     if (!document.title.includes('Labels'))
         return;
     window.URL = window.webkitURL || window.URL;
+
+    const cookieJar = new tough.CookieJar();
+    superagent.jar = cookieJar;
 
     const lineBreak = document.createElement('hr');
     const closeButton = document.createElement('button');
@@ -38,34 +44,88 @@ window.onload = () => {
     closeButton.addEventListener('click', () => {
         downloadButton.remove();
         closeButton.remove();
+        printButton.remove();
         lineBreak.remove();
     });
 
-    const getLabels = async () => {
+    const getLabels = () => new Promise(async resolve => {
         const blobs = [];
         const labels = document.getElementsByClassName('label');
         for (let index = 0; index < labels.length; index++)
             blobs.push(await toBlob(labels[index]));
-        if (blobs.length == 1)
-            return {
-                archive: false,
-                blob: blobs[0]
-            };
-        else {
+        if (blobs.length == 1) resolve({
+            archive: false,
+            blob: blobs[0]
+        }); else {
             const zip = new JSZip();
             for (let index = 0; index < blobs.length; index++) {
                 zip.file(`label-${index + 1}.png`, blobs[index]);
-                if (labels.length - 1 === index)
-                    return {
-                        archive: true,
-                        blob: await zip.generateAsync({ type: 'blob' })
-                    };
+                if (labels.length - 1 === index) resolve({
+                    archive: true,
+                    blob: await zip.generateAsync({ type: 'blob' })
+                });
             };
         };
+    });
+
+    const endHandler = (error, response) => {
+        if (error) {
+            alert(error);
+            return false;
+        }
+        else if (response.status !== 200) {
+            alert(`Server responded with status ${response.status}`);
+            return false;
+        }
+        else return true;
     };
 
+    const getServerStatus = () => new Promise(resolve => {
+        const key = 'printServerAddress';
+        chrome.storage.sync.get([key], async result => {
+            const address = result[key] || prompt('Print server address:');
+            superagent.get(build(address, { path: 'status' })).set('Accept', 'application/json').end((error, response) => {
+                if (endHandler(error, response)) chrome.storage.sync.set({ [key]: address }, () => resolve({
+                    authenticated: response.body.authenticated,
+                    address
+                }));
+            });
+        });
+    });
+
     printButton.innerHTML = 'Print';
-    // todo implement printing
+    printButton.addEventListener('click', async () => {
+        if (printButton.disabled)
+            return;
+        printButton.disabled = true;
+        const { authenticated, address } = await getServerStatus();
+        const print = async () => {
+            const { blob } = await getLabels();
+            superagent
+                .post(build(address, { path: 'print/label' }))
+                .withCredentials()
+                .send(blob)
+                .end(endHandler);
+        };
+        if (!authenticated) {
+            const username = prompt('Username:'), password = prompt('Password:');
+            if (!username || !password) {
+                alert('Please enter a username and a password.');
+                return;
+            }
+            console.log({ username, password });
+            superagent
+                .post(build(address, { path: 'auth' }))
+                .withCredentials()
+                .send({ username, password })
+                .set('Content-Type', 'application/json')
+                .set('Accept', 'application/json')
+                .end((error, response) => {
+                    if (endHandler(error, response))
+                        print();
+                });
+        } else print();
+    });
 
     const download = (blob, name) => {
         const link = document.createElement('a');
@@ -80,8 +140,8 @@ window.onload = () => {
     downloadButton.addEventListener('click', async () => {
         if (!downloadButton.disabled) {
             downloadButton.disabled = true;
-            const labels = await getLabels();
-            download(labels.blob, `labels.${labels.archive ? 'zip' : 'png'}`)
+            const { blob, archive } = await getLabels();
+            download(blob, `labels.${archive ? 'zip' : 'png'}`)
         };
     });
 
