@@ -5,6 +5,11 @@
   "version": "0.0.1",
   "manifest_version": 2,
   "permissions": ["storage", "cookies", "*://*/*"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "daniel.riegler@essteyr.com"
+    }
+  },
   "content_scripts": [
     {
       "matches": ["*://inventory.essteyr.com/*/bulkedit"],
