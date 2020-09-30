@@ -78,24 +78,21 @@ window.onload = () => {
             chrome.storage.sync.set({ [serverAddressKey]: address }, () => resolve(address));
     });
 
-    const getServerStatus = () => new Promise(resolve => {
-        const key = 'printServerAddress';
-        chrome.storage.sync.get([serverAddressKey], async result => {
-            const address = result[key] || await setServerAddress();
-            axios({
-                method: 'GET',
-                url: build(address, { path: 'status' }),
-                withCredentials: true
-            }).then(response => resolve({
-                authenticated: response.data.authenticated,
-                address
-            })).catch(error => {
-                alert(error);
-                setServerAddress();
-                resolve(getServerStatus());
-            });
+    const getServerStatus = () => new Promise(resolve => chrome.storage.sync.get([serverAddressKey], async result => {
+        const address = result[key] || await setServerAddress();
+        axios({
+            method: 'GET',
+            url: build(address, { path: 'status' }),
+            withCredentials: true
+        }).then(response => resolve({
+            authenticated: response.data.authenticated,
+            address
+        })).catch(error => {
+            alert(error);
+            setServerAddress();
+            resolve(getServerStatus());
         });
-    });
+    }));
 
     printButton.innerHTML = 'Print';
     printButton.addEventListener('click', async () => {
