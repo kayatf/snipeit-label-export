@@ -14,10 +14,9 @@
     "webextension-toolbox": "^3.0.0"
   },
   "dependencies": {
+    "axios": "^0.20.0",
     "build-url": "^6.0.1",
     "html-to-image": "^0.1.1",
-    "jszip": "^3.5.0",
-    "superagent": "^6.1.0",
-    "tough-cookie": "^4.0.0"
+    "jszip": "^3.5.0"
   }
 }

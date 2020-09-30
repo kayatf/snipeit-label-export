@@ -22,18 +22,14 @@
  */
 
 const { toBlob } = require('html-to-image');
-const superagent = require('superagent');
-const tough = require('tough-cookie');
 const build = require('build-url');
+const axios = require('axios');
 const JSZip = require('jszip');
 
 window.onload = () => {
     if (!document.title.includes('Labels'))
         return;
     window.URL = window.webkitURL || window.URL;
-
-    const cookieJar = new tough.CookieJar();
-    superagent.jar = cookieJar;
 
     const lineBreak = document.createElement('hr');
     const closeButton = document.createElement('button');
@@ -68,27 +64,35 @@ window.onload = () => {
         };
     });
 
-    const endHandler = (error, response) => {
-        if (error) {
-            alert(error);
-            return false;
-        }
-        else if (response.status !== 200) {
-            alert(`Server responded with status ${response.status}`);
-            return false;
-        }
-        else return true;
-    };
+    const serverAddressKey = 'printServerAddress';
+    // https://www.tutorialspoint.com/How-to-validate-URL-address-in-JavaScript
+    const serverAddressRegex = new RegExp('^(https?:\\/\\/)?' + // protocol
+        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' + // domain name
+        '((\\d{1,3}\\.){3}\\d{1,3}))' + // ip (v4) address
+        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'); //port
+    const setServerAddress = () => new Promise(async resolve => {
+        let address = prompt('Print server address:');
+        if (!serverAddressRegex.test(address))
+            address = await setServerAddress();
+        else
+            chrome.storage.sync.set({ [serverAddressKey]: address }, () => resolve(address));
+    });
 
     const getServerStatus = () => new Promise(resolve => {
         const key = 'printServerAddress';
-        chrome.storage.sync.get([key], async result => {
-            const address = result[key] || prompt('Print server address:');
-            superagent.get(build(address, { path: 'status' })).set('Accept', 'application/json').end((error, response) => {
-                if (endHandler(error, response)) chrome.storage.sync.set({ [key]: address }, () => resolve({
-                    authenticated: response.body.authenticated,
-                    address
-                }));
+        chrome.storage.sync.get([serverAddressKey], async result => {
+            const address = result[key] || await setServerAddress();
+            axios({
+                method: 'GET',
+                url: build(address, { path: 'status' }),
+                withCredentials: true
+            }).then(response => resolve({
+                authenticated: response.data.authenticated,
+                address
+            })).catch(error => {
+                alert(error);
+                setServerAddress();
+                resolve(getServerStatus());
             });
         });
     });
@@ -101,29 +105,34 @@ window.onload = () => {
         const { authenticated, address } = await getServerStatus();
         const print = async () => {
             const { blob } = await getLabels();
-            superagent
-                .post(build(address, { path: 'print/label' }))
-                .withCredentials()
-                .send(blob)
-                .end(endHandler);
+            axios({
+                method: 'POST',
+                headers: { 'Content-Type': blob.type },
+                url: build(address, { path: 'print/label' }),
+                withCredentials: true,
+                data: blob
+            }).catch(error => {
+                printButton.disabled = false;
+                alert(error);
+            });
         };
         if (!authenticated) {
             const username = prompt('Username:'), password = prompt('Password:');
             if (!username || !password) {
                 alert('Please enter a username and a password.');
+                printButton.disabled = false;
                 return;
             }
-            console.log({ username, password });
-            superagent
-                .post(build(address, { path: 'auth' }))
-                .withCredentials()
-                .send({ username, password })
-                .set('Content-Type', 'application/json')
-                .set('Accept', 'application/json')
-                .end((error, response) => {
-                    if (endHandler(error, response))
-                        print();
-                });
+            axios({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', },
+                url: build(address, { path: 'auth' }),
+                data: { username, password },
+                withCredentials: true
+            }).then(() => print()).catch(error => {
+                printButton.disabled = false;
+                alert(error);
+            });
         } else print();
     });
 
@@ -142,6 +151,7 @@ window.onload = () => {
             downloadButton.disabled = true;
             const { blob, archive } = await getLabels();
             download(blob, `labels.${archive ? 'zip' : 'png'}`)
+            downloadButton.disabled = false;
         };
     });
 
