@@ -92,10 +92,9 @@ window.onload = () => {
       authenticated: response.data.authenticated,
       address
     })).catch(async error => {
-      //printButton.disabled = false;
       await Swal.fire(error.name || 'Error', error.message, 'error');
-      const address = await setServerAddress();
-      resolve({authenticated: false, address: address});
+      await setServerAddress();
+      resolve(await getServerStatus());
     });
   }));
 
@@ -156,7 +155,7 @@ window.onload = () => {
         printButton.disabled = false;
         Swal.fire(error.name || 'Error', error.message, 'error');
       });
-    } else print();
+    } else await print();
   });
 
   const download = (blob, name) => {
