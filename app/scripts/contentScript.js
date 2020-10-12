@@ -98,6 +98,37 @@ window.onload = () => {
     });
   }));
 
+  const getCredentials = () => new Promise(async resolve => {
+    const {value: username} = await Swal.fire({
+      input: 'email',
+      title: 'Enter your email address',
+      inputPlaceholder: 'Enter your email address',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      inputValidator: value => {
+        if (!value)
+          return 'You need to enter an email address!';
+      },
+    })
+    const {value: password} = await Swal.fire({
+      input: 'password',
+      title: 'Enter your password',
+      inputPlaceholder: 'Enter your password',
+      inputValidator: value => {
+        if (!value)
+          return 'You need to enter a password!';
+      },
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      inputAttributes: {
+        maxlength: 10,
+        autocapitalize: 'off',
+        autocorrect: 'off'
+      }
+    });
+    resolve({username, password});
+  });
+
   printButton.innerHTML = 'Print';
   printButton.addEventListener('click', async () => {
     if (printButton.disabled)
@@ -118,33 +149,7 @@ window.onload = () => {
       });
     };
     if (!authenticated) {
-      const {value: username} = await Swal.fire({
-        input: 'email',
-        title: 'Enter your email address',
-        inputPlaceholder: 'Enter your email address',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        inputValidator: value => {
-          if (!value)
-            return 'You need to enter an email address!';
-        },
-      })
-      const {value: password} = await Swal.fire({
-        input: 'password',
-        title: 'Enter your password',
-        inputPlaceholder: 'Enter your password',
-        inputValidator: value => {
-          if (!value)
-            return 'You need to enter a password!';
-        },
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        inputAttributes: {
-          maxlength: 10,
-          autocapitalize: 'off',
-          autocorrect: 'off'
-        }
-      });
+      const {username, password} = await getCredentials();
       axios({
         method: 'POST',
         headers: {'Content-Type': 'application/json',},
@@ -152,9 +157,9 @@ window.onload = () => {
         data: {username, password},
         withCredentials: true
       }).then(() => print()).catch(error => {
-        printButton.disabled = false;
         Swal.fire(error.name || 'Error', error.message, 'error');
-      });
+        printButton.disabled = false;
+      })
     } else await print();
   });
 
