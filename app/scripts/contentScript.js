@@ -146,11 +146,6 @@ window.onload = () => {
           autocorrect: 'off'
         }
       });
-      if (!username || !password) {
-        await Swal.fire('Please enter a username and a password.');
-        printButton.disabled = false;
-        return;
-      }
       axios({
         method: 'POST',
         headers: {'Content-Type': 'application/json',},
