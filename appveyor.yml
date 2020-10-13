@@ -7,13 +7,18 @@ init:
       nvm install v14.5.0
 install:
   - sh: npm install
+test_script:
+  - sh: npm run test
 build_script:
   - sh: npm run build
-test: off
-before_deploy:
-  - sh: zip -r packages/all.zip packages/*
 deploy:
   - provider: GitHub
     auth_token:
       secure: SC/Cg3dJiNMCSKIDaMxTGMdWwh7woiHSG6RZHxTllXa4IKszj7wQqgAhggCTyNzl
-    artifact: /home/appveyor/snipeit-label-export/packages/*.zip
+    artifacts:
+      - path: packages/snipeit-label-export.v0.0.1.chrome.zip
+        name: Chrome
+      - path: packages/snipeit-label-export.v0.0.1.edge.zip
+        name: Edge
+      - path: packages/snipeit-label-export.v0.0.1.firefox.xpi.zip
+        name: Firefox
