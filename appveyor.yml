@@ -16,4 +16,4 @@ deploy:
   - provider: GitHub
     auth_token:
       secure: SC/Cg3dJiNMCSKIDaMxTGMdWwh7woiHSG6RZHxTllXa4IKszj7wQqgAhggCTyNzl
-    artifact: packages\*.zip
+    artifact: /home/appveyor/snipeit-label-export/packages/*.zip
