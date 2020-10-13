@@ -4,8 +4,6 @@ init:
   - sh: >-
       sudo apt update
 
-      sudo apt -y install  zip
-
       nvm install v14.5.0
 install:
   - sh: npm install
@@ -18,4 +16,4 @@ deploy:
   - provider: GitHub
     auth_token:
       secure: SC/Cg3dJiNMCSKIDaMxTGMdWwh7woiHSG6RZHxTllXa4IKszj7wQqgAhggCTyNzl
-    artifact: packages/
+    artifact: packages/*
