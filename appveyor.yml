@@ -2,11 +2,11 @@ version: 1.0.{build}
 image: Ubuntu1804
 init:
   - sh: >-
-      curl -sL https://deb.nodesource.com/setup_14.x | sudo bash -
+      sudo apt update
 
-      sudo apt -y install nodejs zip
+      sudo apt -y install  zip
 
-      npm install --global npm
+      nvm install v14.5.0
 install:
   - sh: npm install
 build_script:
