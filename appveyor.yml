@@ -1,0 +1,26 @@
+version: 1.0.{build}
+image: Ubuntu2004
+init:
+  - sh: >-
+      # Update system
+      sudo apt update
+      sudo apt -y upgrade
+      # Install packages
+      sudo apt -y install curl zip gcc g++ make
+      # Install Install latest nodejs
+      curl -sL https://deb.nodesource.com/setup_14.x | sudo bash -
+      sudo apt -y install nodejs
+      # Update npm
+      sudo npm install --global npm
+install:
+  - sh: npm install
+build_script:
+  - sh: npm run build
+test: off
+before_deploy:
+  - sh: zip -r all.zip packages/*
+deploy:
+  - provider: GitHub
+    auth_token:
+      secure: SC/Cg3dJiNMCSKIDaMxTGMdWwh7woiHSG6RZHxTllXa4IKszj7wQqgAhggCTyNzl
+    artifact: packages/
