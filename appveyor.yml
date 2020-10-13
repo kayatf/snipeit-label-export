@@ -6,7 +6,7 @@ init:
 
       sudo apt -y install nodejs zip
 
-      sudo npm install --global npm
+      npm install --global npm
 install:
   - sh: npm install
 build_script:
