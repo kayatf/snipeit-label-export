@@ -1,6 +1,14 @@
-/**
- * This file is licensed und The MIT License
- * Copyright (c) 2019 Riegler Daniel
+/*
+ *     ________________ __
+ *    / ____/ ___/ ___// /____  __  _______
+ *   / __/  \__ \\__ \/ __/ _ \/ / / / ___/
+ *  / /___ ___/ /__/ / /_/  __/ /_/ / /
+ * /_____//____/____/\__/\___/\__, /_/
+ *                           /____/
+ *
+ * This file is licensed under The MIT License
+ * Copyright (c) 2020 Riegler Daniel
+ * Copyright (c) 2020 ESS Engineering Software Steyr GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,10 +29,12 @@
  * SOFTWARE.
  */
 
+const axiosCookieJarSupport = require('axios-cookiejar-support');
+const {CookieJar} = require('tough-cookie');
 const {toBlob} = require('html-to-image');
 const Swal = require('sweetalert2');
 const build = require('build-url');
-const axios = require('axios');
+const {create} = require('axios').default;
 const JSZip = require('jszip');
 
 window.onload = () => {
@@ -32,10 +42,19 @@ window.onload = () => {
     return;
   window.URL = window.webkitURL || window.URL;
 
-  const lineBreak = document.createElement('hr');
-  const closeButton = document.createElement('button');
-  const printButton = document.createElement('button');
-  const downloadButton = document.createElement('button');
+  const instance = create({
+    jar: new CookieJar(),
+    withCredentials: true,
+    headers: {Accept: 'application/json'}
+  });
+
+  axiosCookieJarSupport(instance);
+
+  const
+    lineBreak = document.createElement('hr'),
+    closeButton = document.createElement('button'),
+    printButton = document.createElement('button'),
+    downloadButton = document.createElement('button');
 
   closeButton.innerHTML = 'Hide';
   closeButton.addEventListener('click', () => {
@@ -67,29 +86,28 @@ window.onload = () => {
 
   const serverAddressKey = 'printServerAddress';
   const setServerAddress = () => new Promise(async resolve => {
-    const {value: address} = await Swal.fire({
+    const {isDismissed, value: address} = await Swal.fire({
       input: 'url',
+      icon: 'question',
       title: 'Enter print server address',
       inputPlaceholder: 'Print server address',
       allowOutsideClick: false,
-      allowEscapeKey: false,
-      inputValidator: value => {
-        if (!value)
-          return 'You need to enter an address.';
-      }
+      showCloseButton: true
     })
-    if (address)
+    if (isDismissed)
+      printButton.disabled = false;
+    else
       chrome.storage.sync.set({[serverAddressKey]: address}, () => resolve(address));
   });
 
   const getServerStatus = () => new Promise(resolve => chrome.storage.sync.get([serverAddressKey], async result => {
     const address = result[serverAddressKey] || await setServerAddress();
-    axios({
+    instance({
       method: 'GET',
       url: build(address, {path: 'auth'}),
-      withCredentials: true
+      headers: {Accept: 'application/json'},
     }).then(response => resolve({
-      authenticated: response.data.authenticated,
+      authenticated: response.data.data.isAuthenticated,
       address
     })).catch(async error => {
       await Swal.fire(error.name || 'Error', error.message, 'error');
@@ -97,37 +115,6 @@ window.onload = () => {
       resolve(await getServerStatus());
     });
   }));
-
-  const getCredentials = () => new Promise(async resolve => {
-    const {value: username} = await Swal.fire({
-      input: 'email',
-      title: 'Enter your email address',
-      inputPlaceholder: 'Enter your email address',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      inputValidator: value => {
-        if (!value)
-          return 'You need to enter an email address!';
-      },
-    })
-    const {value: password} = await Swal.fire({
-      input: 'password',
-      title: 'Enter your password',
-      inputPlaceholder: 'Enter your password',
-      inputValidator: value => {
-        if (!value)
-          return 'You need to enter a password!';
-      },
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      inputAttributes: {
-        maxlength: 10,
-        autocapitalize: 'off',
-        autocorrect: 'off'
-      }
-    });
-    resolve({username, password});
-  });
 
   printButton.innerHTML = 'Print';
   printButton.addEventListener('click', async () => {
@@ -137,25 +124,55 @@ window.onload = () => {
     const {authenticated, address} = await getServerStatus();
     const print = async () => {
       const {blob} = await getLabels();
-      axios({
+      instance({
         method: 'POST',
         headers: {'Content-Type': blob.type},
         url: build(address, {path: 'queue'}),
-        withCredentials: true,
         data: blob
+      }).then(response => {
+        const {status, data} = response;
+        if (200 === status) {
+          const
+            addedItems = data.data.addedItems,
+            positionInQueue = data.data.positionInQueue;
+          Swal.fire('Success!',
+            `Added ${1 === addedItems ? 'one item' : `${addedItems} items`} to queue (#${positionInQueue}).`,
+            'info'
+          );
+        } else {
+          const error = new Error(response.data.error.message);
+          error.name = response.data.error.type;
+          throw error;
+        }
+        printButton.disabled = false;
       }).catch(error => {
         Swal.fire(error.name || 'Error', error.message, 'error');
         printButton.disabled = false;
       });
     };
     if (!authenticated) {
-      const {username, password} = await getCredentials();
-      axios({
+      const {value: username} = await Swal.fire({
+        input: 'email',
+        icon: 'question',
+        title: 'Enter your email address',
+        inputPlaceholder: 'Your email address',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      })
+      const {value: password} = await Swal.fire({
+        icon: 'question',
+        input: 'password',
+        title: 'Enter your password',
+        inputPlaceholder: 'Your password',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        inputAttributes: {autocorrect: 'off', minLength: 8}
+      });
+      instance({
         method: 'POST',
-        headers: {'Content-Type': 'application/json',},
+        headers: {'Content-Type': 'application/json'},
         url: build(address, {path: 'auth'}),
         data: {username, password},
-        withCredentials: true
       }).then(() => print()).catch(error => {
         Swal.fire(error.name || 'Error', error.message, 'error');
         printButton.disabled = false;

@@ -10,14 +10,17 @@
   "author": "Riegler Daniel",
   "license": "MIT",
   "devDependencies": {
+    "@types/chrome": "0.0.124",
     "addons-linter": "^2.1.0",
     "webextension-toolbox": "^3.0.0"
   },
   "dependencies": {
     "axios": "^0.20.0",
+    "axios-cookiejar-support": "^1.0.0",
     "build-url": "^6.0.1",
     "html-to-image": "^0.1.1",
     "jszip": "^3.5.0",
-    "sweetalert2": "^10.4.0"
+    "sweetalert2": "^10.4.0",
+    "tough-cookie": "^4.0.0"
   }
 }
