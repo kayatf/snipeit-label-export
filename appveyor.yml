@@ -1,5 +1,5 @@
 version: 1.0.{build}
-image: Ubuntu1804
+image: Ubuntu2004
 init:
   - sh: >-
       sudo apt update
@@ -9,17 +9,14 @@ install:
   - sh: npm install
 build_script:
   - sh: npm run build
-test: off
-before_deploy:
-  - sh: zip -r packages/all.zip packages/*
+test_script:
+  - sh: npm run test
+artifacts:
+  - path: packages\*.zip
+    name: packages
 deploy:
   - provider: GitHub
     auth_token:
       secure: SC/Cg3dJiNMCSKIDaMxTGMdWwh7woiHSG6RZHxTllXa4IKszj7wQqgAhggCTyNzl
-    artifact:
-      - path: packages/snipeit-label-export.v0.0.1.chrome.zip
-        name: Chrome
-      - path: packages/snipeit-label-export.v0.0.1.edge.zip
-        name: Edge
-      - path: packages/snipeit-label-export.v0.0.1.firefox.xpi.zip
-        name: Firefox
+    artifact: packages
+    prerelease: false
