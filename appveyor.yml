@@ -1,15 +1,11 @@
 version: 1.0.{build}
-image: Ubuntu2004
+image: Ubuntu1804
 init:
   - sh: >-
       sudo apt update
-
       sudo apt -y install curl zip gcc g++ make
-
       curl -sL https://deb.nodesource.com/setup_14.x | sudo bash -
-
-      sudo apt -y install nodejs
-
+      sudo apt -y install nodejs npm
       sudo npm install --global npm
 install:
   - sh: npm install
