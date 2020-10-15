@@ -87,7 +87,7 @@ window.onload = () => {
   const serverAddressKey = 'printServerAddress';
   const setServerAddress = () => new Promise(async resolve => {
     const {isDismissed, value: address} = await Swal.fire({
-      input: 'url',
+      input: 'text',
       icon: 'question',
       title: 'Enter print server address',
       inputPlaceholder: 'Print server address',
