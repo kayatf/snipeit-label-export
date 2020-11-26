@@ -50,10 +50,10 @@ window.onload = () => {
   axiosCookieJarSupport(instance);
 
   const
-    lineBreak = document.createElement('hr'),
-    closeButton = document.createElement('button'),
-    printButton = document.createElement('button'),
-    downloadButton = document.createElement('button');
+      lineBreak = document.createElement('hr'),
+      closeButton = document.createElement('button'),
+      printButton = document.createElement('button'),
+      downloadButton = document.createElement('button');
 
   closeButton.innerHTML = 'Hide';
   closeButton.addEventListener('click', () => {
@@ -138,8 +138,8 @@ window.onload = () => {
               addedItems = data.data.addedItems,
               positionInQueue = data.data.positionInQueue;
           Swal.fire('Success!',
-            `Added ${1 === addedItems ? 'one item' : `${addedItems} items`} to queue (#${positionInQueue}).`,
-            'info'
+              `Added ${1 === addedItems ? 'one item' : `${addedItems} items`} to queue (#${positionInQueue}).`,
+              'info'
           );
         } else {
           const error = new Error(response.data.error.message);
