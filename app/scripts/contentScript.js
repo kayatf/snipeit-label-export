@@ -40,7 +40,6 @@ const JSZip = require('jszip');
 window.onload = () => {
   if (!document.title.includes('Labels'))
     return;
-  window.URL = window.webkitURL || window.URL;
 
   const instance = create({
     jar: new CookieJar(),
@@ -100,21 +99,24 @@ window.onload = () => {
       chrome.storage.sync.set({[serverAddressKey]: address}, () => resolve(address));
   });
 
-  const getServerStatus = () => new Promise(resolve => chrome.storage.sync.get([serverAddressKey], async result => {
-    const address = result[serverAddressKey] || await setServerAddress();
-    instance({
-      method: 'GET',
-      url: build(address, {path: 'auth'}),
-      headers: {Accept: 'application/json'},
-    }).then(response => resolve({
-      authenticated: response.data.data.isAuthenticated,
-      address
-    })).catch(async error => {
-      await Swal.fire(error.name || 'Error', error.message, 'error');
-      await setServerAddress();
-      resolve(await getServerStatus());
+  const getServerStatus = () => {
+    return new Promise(resolve => {
+      chrome.storage.sync.get([serverAddressKey], async result => {
+        const address = result[serverAddressKey] || await setServerAddress();
+        instance({
+          method: 'GET',
+          url: build(address, {path: 'auth'})
+        }).then(response => resolve({
+          authenticated: (response.data.data || {isAuthenticated: false}).isAuthenticated,
+          address
+        })).catch(async error => {
+          await Swal.fire(error.name || 'Error', error.message, 'error');
+          await setServerAddress();
+          resolve(await getServerStatus());
+        });
+      });
     });
-  }));
+  };
 
   printButton.innerHTML = 'Print';
   printButton.addEventListener('click', async () => {
@@ -133,8 +135,8 @@ window.onload = () => {
         const {status, data} = response;
         if (200 === status) {
           const
-            addedItems = data.data.addedItems,
-            positionInQueue = data.data.positionInQueue;
+              addedItems = data.data.addedItems,
+              positionInQueue = data.data.positionInQueue;
           Swal.fire('Success!',
             `Added ${1 === addedItems ? 'one item' : `${addedItems} items`} to queue (#${positionInQueue}).`,
             'info'

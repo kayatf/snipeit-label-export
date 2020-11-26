@@ -8,11 +8,6 @@
     "storage",
     "*://*/*"
   ],
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "daniel.riegler@essteyr.com"
-    }
-  },
   "content_scripts": [
     {
       "matches": [
