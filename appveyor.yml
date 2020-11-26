@@ -9,8 +9,8 @@ install:
   - sh: npm install
 build_script:
   - sh: npm run build
-test_script:
-  - sh: npm run test
+#test_script:
+#  - sh: npm run test
 artifacts:
   - path: packages\*.zip
     name: packages
