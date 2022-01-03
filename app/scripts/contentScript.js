@@ -30,12 +30,13 @@
  */
 
 const axiosCookieJarSupport = require('axios-cookiejar-support');
-const {CookieJar} = require('tough-cookie');
-const {toBlob} = require('html-to-image');
-const Swal = require('sweetalert2');
+const { CookieJar } = require('tough-cookie');
+const { toBlob } = require('html-to-image');
 const build = require('build-url');
-const {create} = require('axios').default;
+const { create } = require('axios').default;
 const JSZip = require('jszip');
+
+const SERVICE_URL = 'https://qls.essteyr.com';
 
 window.onload = () => {
   if (!document.title.includes('Labels'))
@@ -44,16 +45,16 @@ window.onload = () => {
   const instance = create({
     jar: new CookieJar(),
     withCredentials: true,
-    headers: {Accept: 'application/json'}
+    headers: { Accept: 'application/json' }
   });
 
   axiosCookieJarSupport(instance);
 
   const
-      lineBreak = document.createElement('hr'),
-      closeButton = document.createElement('button'),
-      printButton = document.createElement('button'),
-      downloadButton = document.createElement('button');
+    lineBreak = document.createElement('hr'),
+    closeButton = document.createElement('button'),
+    printButton = document.createElement('button'),
+    downloadButton = document.createElement('button');
 
   closeButton.innerHTML = 'Hide';
   closeButton.addEventListener('click', () => {
@@ -67,7 +68,7 @@ window.onload = () => {
     const blobs = [];
     const labels = document.getElementsByClassName('label');
     for (let index = 0; index < labels.length; index++)
-      blobs.push(await toBlob(labels[index]));
+      blobs.push(await toBlob(labels[index], { pixelRatio: 1 }));
     if (1 === blobs.length) resolve({
       archive: false,
       blob: blobs[0]
@@ -77,109 +78,40 @@ window.onload = () => {
         zip.file(`label-${index + 1}.png`, blobs[index]);
         if (labels.length - 1 === index) resolve({
           archive: true,
-          blob: await zip.generateAsync({type: 'blob'})
+          blob: await zip.generateAsync({ type: 'blob' })
         });
       }
     }
   });
-
-  const serverAddressKey = 'printServerAddress';
-  const setServerAddress = () => new Promise(async resolve => {
-    const {isDismissed, value: address} = await Swal.fire({
-      input: 'text',
-      icon: 'question',
-      title: 'Enter print server address',
-      inputPlaceholder: 'Print server address',
-      allowOutsideClick: false,
-      showCloseButton: true
-    })
-    if (isDismissed)
-      printButton.disabled = false;
-    else
-      chrome.storage.sync.set({[serverAddressKey]: address}, () => resolve(address));
-  });
-
-  const getServerStatus = () => {
-    return new Promise(resolve => {
-      chrome.storage.sync.get([serverAddressKey], async result => {
-        const address = result[serverAddressKey] || await setServerAddress();
-        instance({
-          method: 'GET',
-          url: build(address, {path: 'auth'})
-        }).then(response => resolve({
-          authenticated: (response.data.data || {isAuthenticated: false}).isAuthenticated,
-          address
-        })).catch(async error => {
-          await Swal.fire(error.name || 'Error', error.message, 'error');
-          await setServerAddress();
-          resolve(await getServerStatus());
-        });
-      });
-    });
-  };
 
   printButton.innerHTML = 'Print';
   printButton.addEventListener('click', async () => {
     if (printButton.disabled)
       return;
     printButton.disabled = true;
-    const {authenticated, address} = await getServerStatus();
-    const print = async () => {
-      const {blob} = await getLabels();
-      instance({
-        method: 'POST',
-        headers: {'Content-Type': blob.type},
-        url: build(address, {path: 'queue'}),
-        data: blob
-      }).then(response => {
-        const {status, data} = response;
-        if (200 === status) {
-          const
-              addedItems = data.data.addedItems,
-              positionInQueue = data.data.positionInQueue;
-          Swal.fire('Success!',
-              `Added ${1 === addedItems ? 'one item' : `${addedItems} items`} to queue (#${positionInQueue}).`,
-              'info'
-          );
-        } else {
-          const error = new Error(response.data.error.message);
-          error.name = response.data.error.type;
-          throw error;
-        }
-        printButton.disabled = false;
-      }).catch(error => {
-        Swal.fire(error.name || 'Error', error.message, 'error');
-        printButton.disabled = false;
-      });
-    };
-    if (!authenticated) {
-      const {value: username} = await Swal.fire({
-        input: 'email',
-        icon: 'question',
-        title: 'Enter your email address',
-        inputPlaceholder: 'Your email address',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-      })
-      const {value: password} = await Swal.fire({
-        icon: 'question',
-        input: 'password',
-        title: 'Enter your password',
-        inputPlaceholder: 'Your password',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        inputAttributes: {autocorrect: 'off', minLength: 8}
-      });
-      instance({
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        url: build(address, {path: 'auth'}),
-        data: {username, password},
-      }).then(() => print()).catch(error => {
-        Swal.fire(error.name || 'Error', error.message, 'error');
-        printButton.disabled = false;
-      })
-    } else await print();
+    const { blob } = await getLabels();
+    instance({
+      method: 'POST',
+      headers: { 'Content-Type': blob.type },
+      url: build(SERVICE_URL, { path: 'queue' }),
+      data: blob
+    }).then(response => {
+      const { status, data } = response;
+      if (200 === status) {
+        const
+          addedItems = data.data.addedItems,
+          positionInQueue = data.data.positionInQueue;
+        alert(`Added ${1 === addedItems ? 'one item' : `${addedItems} items`} to queue (#${positionInQueue}).`);
+      } else {
+        const error = new Error(response.data.error.message);
+        error.name = response.data.error.type;
+        throw error;
+      }
+      printButton.disabled = false;
+    }).catch(error => {
+      alert(`${error.name || 'Error'}: ${error.message}`);
+      printButton.disabled = false;
+    });
   });
 
   const download = (blob, name) => {
@@ -195,7 +127,7 @@ window.onload = () => {
   downloadButton.addEventListener('click', async () => {
     if (!downloadButton.disabled) {
       downloadButton.disabled = true;
-      const {blob, archive} = await getLabels();
+      const { blob, archive } = await getLabels();
       download(blob, `label${archive ? 's.zip' : '.png'}`)
       downloadButton.disabled = false;
     }

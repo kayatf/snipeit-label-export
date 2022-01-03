@@ -20,7 +20,6 @@
     "build-url": "^6.0.1",
     "html-to-image": "^0.1.1",
     "jszip": "^3.5.0",
-    "sweetalert2": "^10.4.0",
     "tough-cookie": "^4.0.0"
   }
 }
