@@ -36,7 +36,7 @@ const build = require('build-url');
 const { create } = require('axios').default;
 const JSZip = require('jszip');
 
-const SERVICE_URL = 'https://qls.essteyr.com';
+const SERVICE_URL = 'https://labelprinter.essteyr.com';
 
 window.onload = () => {
   if (!document.title.includes('Labels'))
